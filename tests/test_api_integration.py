@@ -293,7 +293,7 @@ class TestInternalCrashHandler:
             raise RuntimeError(msg)
 
         async with AsyncClient(
-            transport=ASGITransport(app=app_with_db),
+            transport=ASGITransport(app=app_with_db, raise_app_exceptions=False),
             base_url="http://testserver",
         ) as c:
             response = await c.get("/api/v1/test/crash-endpoint")
@@ -304,16 +304,21 @@ class TestInternalCrashHandler:
         # Must have incident_id (for technician lookup)
         assert "incident_id" in data, f"RFC 7807 must have incident_id. Got: {data}"
 
-        # Must NOT contain any stack trace information
+        # Must NOT contain any stack trace information or sensitive fields
         response_text = response.text
         assert "RuntimeError" not in response_text, "Stack trace must not leak to client"
         assert "Traceback" not in response_text, "Traceback must not leak to client"
+        assert "detail" not in data, "RFC 7807: 'detail' field must not expose internal info"
+        assert "exception" not in data, "RFC 7807: 'exception' field must not be present"
 
-        # Must have RFC 7807 fields
-        assert "type" in data
-        assert "title" in data
-        assert "status" in data
+        # Must have all RFC 7807 mandatory fields
+        assert "type" in data, "RFC 7807 requires 'type'"
+        assert "title" in data, "RFC 7807 requires 'title'"
+        assert "status" in data, "RFC 7807 requires 'status'"
         assert data["status"] == 500
+        assert data["type"] == "https://badnass.ma/errors/internal-system-error", (
+            f"Expected canonical error type URI, got: {data['type']}"
+        )
 
 
 # ---------------------------------------------------------------------------

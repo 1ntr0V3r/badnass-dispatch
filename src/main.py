@@ -11,6 +11,8 @@ Wires together all hexagonal architecture adapters:
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI
@@ -38,6 +40,39 @@ def create_app(database_url: str | None = None, redis_url: str | None = None) ->
     Returns:
         Configured FastAPI instance.
     """
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+        """Manage application startup and shutdown via the modern lifespan protocol."""
+        # ── Startup ───────────────────────────────────────────────────────
+        _db_url = database_url or _build_postgres_url()
+        engine, session_factory = create_engine_and_session(_db_url)
+        _app.state.engine = engine
+        _app.state.session_factory = session_factory
+
+        # Create all tables (idempotent in development)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        # Redis client for JTI revocation
+        _redis_url = redis_url or (
+            f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}"
+        )
+        try:
+            redis_client = aioredis.from_url(_redis_url, decode_responses=True)
+            await redis_client.ping()
+            _app.state.redis = redis_client
+        except Exception:  # noqa: BLE001
+            _app.state.redis = None  # Degraded mode — JTI revocation skipped
+
+        yield  # Application is running
+
+        # ── Shutdown ──────────────────────────────────────────────────────
+        if hasattr(_app.state, "engine"):
+            await _app.state.engine.dispose()
+        if hasattr(_app.state, "redis") and _app.state.redis:
+            await _app.state.redis.aclose()
+
     app = FastAPI(
         title="BADNASS Dispatch Platform",
         description=(
@@ -48,6 +83,7 @@ def create_app(database_url: str | None = None, redis_url: str | None = None) ->
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
+        lifespan=lifespan,
     )
 
     # ── Security Middleware ───────────────────────────────────────────────
@@ -66,38 +102,6 @@ def create_app(database_url: str | None = None, redis_url: str | None = None) ->
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health() -> dict:
         return {"status": "healthy", "service": "badnass-dispatch"}
-
-    # ── Startup Event ─────────────────────────────────────────────────────
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        # Database engine
-        _db_url = database_url or _build_postgres_url()
-        engine, session_factory = create_engine_and_session(_db_url)
-        app.state.engine = engine
-        app.state.session_factory = session_factory
-
-        # Create all tables (idempotent in development)
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-        # Redis client for JTI revocation
-        _redis_url = redis_url or (
-            f"redis://{os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', '6379')}"
-        )
-        try:
-            redis_client = aioredis.from_url(_redis_url, decode_responses=True)
-            await redis_client.ping()
-            app.state.redis = redis_client
-        except Exception:  # noqa: BLE001
-            app.state.redis = None  # Degraded mode — JTI revocation skipped
-
-    # ── Shutdown Event ────────────────────────────────────────────────────
-    @app.on_event("shutdown")
-    async def on_shutdown() -> None:
-        if hasattr(app.state, "engine"):
-            await app.state.engine.dispose()
-        if hasattr(app.state, "redis") and app.state.redis:
-            await app.state.redis.aclose()
 
     return app
 

@@ -26,6 +26,8 @@ def _build_problem_response(
     detail: str,
     instance: str,
     incident_id: str | None = None,
+    type_slug: str | None = None,
+    include_detail: bool = True,
 ) -> JSONResponse:
     """Build an RFC 7807 Problem Details JSON response.
 
@@ -35,14 +37,18 @@ def _build_problem_response(
         detail: Extended description (still opaque to clients).
         instance: URI reference identifying the request.
         incident_id: Optional incident UUID for tracking.
+        type_slug: Optional explicit URI slug (overrides auto-derived slug from title).
+        include_detail: If False, the 'detail' field is omitted (zero-leakage for 500s).
     """
+    slug = type_slug or title.lower().replace(" ", "-")
     body: dict = {
-        "type": f"https://badnass.ma/errors/{title.lower().replace(' ', '-')}",
+        "type": f"https://badnass.ma/errors/{slug}",
         "title": title,
         "status": status,
-        "detail": detail,
         "instance": instance,
     }
+    if include_detail:
+        body["detail"] = detail
     if incident_id:
         body["incident_id"] = incident_id
     return JSONResponse(status_code=status, content=body)
@@ -125,10 +131,13 @@ def register_exception_handlers(app: FastAPI) -> None:
                 logger.critical("AUDIT_WRITE_FAILED for incident %s", incident_id)
 
         # Return zero-leakage opaque RFC 7807 response
+        # 'detail' intentionally omitted — zero info leakage to external clients
         return _build_problem_response(
             status=500,
-            title="Internal Server Error",
+            title="Internal System Error",
             detail="An unexpected condition occurred. Contact support with the incident ID.",
             instance=str(request.url),
             incident_id=incident_id,
+            type_slug="internal-system-error",
+            include_detail=False,
         )
