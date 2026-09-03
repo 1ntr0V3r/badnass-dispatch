@@ -103,6 +103,13 @@ def create_app(database_url: str | None = None, redis_url: str | None = None) ->
     async def health() -> dict:
         return {"status": "healthy", "service": "badnass-dispatch"}
 
+    # ── Root redirect → Swagger UI ────────────────────────────────────────
+    from fastapi.responses import RedirectResponse  # noqa: PLC0415
+
+    @app.get("/", include_in_schema=False)
+    async def root() -> RedirectResponse:
+        return RedirectResponse(url="/api/docs")
+
     return app
 
 
