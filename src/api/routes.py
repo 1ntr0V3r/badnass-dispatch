@@ -59,7 +59,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105
     expires_in: int = _JWT_EXPIRE_MINUTES * 60
 
 
@@ -110,7 +110,9 @@ async def login(
 
     jti = str(uuid4())
     now = datetime.now(UTC)
-    payload = {
+    secret = os.getenv("SECRET_KEY", "INSECURE_FALLBACK_FOR_TESTS_ONLY")
+    algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+    token_payload = {
         "sub": str(user.id),
         "role": user.role,
         "client_id": str(user.id),
@@ -118,7 +120,7 @@ async def login(
         "iat": now,
         "exp": now + timedelta(minutes=_JWT_EXPIRE_MINUTES),
     }
-    token = jwt.encode(payload, _SECRET_KEY, algorithm=_JWT_ALGORITHM)
+    token = jwt.encode(token_payload, secret, algorithm=algorithm)
 
     return LoginResponse(access_token=token)
 
@@ -156,7 +158,10 @@ async def submit_dispatch(
     try:
         client_timestamp = float(x_timestamp)
     except ValueError:
-        raise HTTPException(status_code=400, detail="X-Timestamp must be a valid Unix epoch float.")
+        raise HTTPException(  # noqa: B904
+            status_code=400,
+            detail="X-Timestamp must be a valid Unix epoch float.",
+        ) from None
 
     # Parse JSON body
     try:

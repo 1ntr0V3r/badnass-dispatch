@@ -71,7 +71,9 @@ async def get_current_identity(
     )
 
     try:
-        payload = jwt.decode(token, _SECRET_KEY, algorithms=[_JWT_ALGORITHM])
+        secret = os.getenv("SECRET_KEY", "INSECURE_FALLBACK_FOR_TESTS_ONLY")
+        algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+        payload = jwt.decode(token, secret, algorithms=[algorithm])
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

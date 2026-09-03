@@ -144,7 +144,9 @@ class SqlAlchemyAuditRegistry:
         safe_actor = actor_id or "SYSTEM"
         meta_json = json.dumps(metadata or {}, default=str, sort_keys=True)
         prev_hash = await self._get_last_hash()
-        record_hash = self._compute_hash(prev_hash, timestamp_iso, safe_actor, error_type, meta_json)
+        record_hash = self._compute_hash(
+            prev_hash, timestamp_iso, safe_actor, error_type, meta_json
+        )
 
         event = AuditEventORM(
             event_id=incident_id,

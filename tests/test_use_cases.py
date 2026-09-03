@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac as hmac_lib
+import json
 import os
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
@@ -32,7 +33,14 @@ _MOCK_SECRET = os.environ.get("MOCK_CLIENT_SECRET", "test_mock_client_secret_hma
 
 
 def _make_payload() -> bytes:
-    return b'{"tracking_ref":"TNG-MED-001","origin_hub":"TANGIER_MED","destination_hub":"CASABLANCA_PORT","transport_mode":"ROAD_TIR","gross_weight_kg":20000.0}'
+    data = {
+        "tracking_ref": "TNG-MED-001",
+        "origin_hub": "TANGIER_MED",
+        "destination_hub": "CASABLANCA_PORT",
+        "transport_mode": "ROAD_TIR",
+        "gross_weight_kg": 20000.0,
+    }
+    return json.dumps(data, separators=(",", ":")).encode()
 
 
 def _make_hmac(payload: bytes, secret: str = _MOCK_SECRET) -> str:
@@ -329,7 +337,12 @@ class TestDomainInvariantRejection:
         verifier = HmacIntegrityService()
         use_case = ProcessDispatchUseCase(repo, verifier, audit)
 
-        payload = b'{"tracking_ref":"TNG-MED-001","origin_hub":"A","destination_hub":"B","transport_mode":"ROAD_TIR","gross_weight_kg":50000.0}'
+        payload = json.dumps(
+            {"tracking_ref": "TNG-MED-001", "origin_hub": "A",
+             "destination_hub": "B", "transport_mode": "ROAD_TIR",
+             "gross_weight_kg": 50000.0},
+            separators=(",", ":"),
+        ).encode()
         sig = _make_hmac(payload)
 
         cmd = SubmitDispatchCommand(

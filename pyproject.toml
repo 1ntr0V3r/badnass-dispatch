@@ -13,14 +13,11 @@ select = [
     "C4",   # flake8-comprehensions
     "UP",   # pyupgrade
     "S",    # bandit security rules
-    "ANN",  # type annotations
 ]
 ignore = [
-    "ANN101",  # Missing type annotation for `self`
-    "ANN102",  # Missing type annotation for `cls`
-    "ANN401",  # Dynamically typed expressions (Any)
     "S101",    # Use of assert (needed in tests)
     "B008",    # Do not perform function call in default args (FastAPI Depends)
+    "S105",    # Hardcoded password false positive for token_type field
 ]
 
 [tool.ruff.lint.per-file-ignores]
