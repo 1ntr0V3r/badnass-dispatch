@@ -17,9 +17,10 @@ postgres_password = secrets.token_urlsafe(24)
 redis_password = secrets.token_urlsafe(24)
 jwt_secret_key = secrets.token_hex(32)
 hmac_secret_key = secrets.token_hex(32)
-pii_key_bytes = secrets.token_bytes(32)  # 256-bit key for AES-256-GCM
-pii_encryption_key_base64 = base64.b64encode(pii_key_bytes).decode("ascii")
-mock_client_secret = secrets.token_hex(16)  # For local dev/testing only
+aes_key_bytes = secrets.token_bytes(32)           # 256-bit key for AES-256-GCM
+aes_key_hex = aes_key_bytes.hex()                # hex — used by DriverDataEncryptor
+pii_encryption_key_base64 = base64.b64encode(aes_key_bytes).decode("ascii")  # base64
+mock_client_secret = secrets.token_hex(16)       # For local dev/testing only
 
 # ── Write .env (actual secrets — must be gitignored) ───────────────────────
 env_lines = [
@@ -37,7 +38,8 @@ env_lines = [
     "# HMAC Payload Integrity (SHA-256, constant-time verify)",
     f"HMAC_SECRET_KEY={hmac_secret_key}",
     "",
-    "# PII Encryption — AES-256-GCM (CNDP Loi 09-08 / GDPR Art.32)",
+    "# PII / AES Encryption — AES-256-GCM (CNDP Loi 09-08 / GDPR Art.32)",
+    f"AES_256_KEY_HEX={aes_key_hex}",
     f"PII_ENCRYPTION_KEY_BASE64={pii_encryption_key_base64}",
     "",
     "# PostgreSQL (air-gapped DB)",
@@ -105,8 +107,9 @@ print(f"  POSTGRES_PASSWORD      : {len(postgres_password)} chars  (token_urlsaf
 print(f"  REDIS_PASSWORD         : {len(redis_password)} chars  (token_urlsafe 24)")
 print(f"  JWT_SECRET_KEY         : {len(jwt_secret_key)} chars (token_hex 32 -> 256-bit)")
 print(f"  HMAC_SECRET_KEY        : {len(hmac_secret_key)} chars (token_hex 32 -> 256-bit)")
-pii_key_info = f"{len(pii_key_bytes) * 8}-bit AES key (base64: {len(pii_encryption_key_base64)} chars)"
-print(f"  PII_ENCRYPTION_KEY     : {pii_key_info}")
+print(f"  AES_256_KEY_HEX        : {len(aes_key_hex)} chars ({len(aes_key_bytes) * 8}-bit)")
+pii_b64_len = len(pii_encryption_key_base64)
+print(f"  PII_ENCRYPTION_KEY_B64 : {pii_b64_len} chars (base64 of same key)")
 print("=" * 60)
 print("  .env         -> written (DO NOT COMMIT)")
 print("  .env.example -> updated (safe to commit)")
