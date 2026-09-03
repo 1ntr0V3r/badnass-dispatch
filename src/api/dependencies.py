@@ -124,7 +124,9 @@ async def get_current_identity(
 # ---------------------------------------------------------------------------
 
 
-def require_privilege(identity: Annotated[SecurityIdentity, Depends(get_current_identity)]) -> SecurityIdentity:
+def require_privilege(
+    identity: Annotated[SecurityIdentity, Depends(get_current_identity)],
+) -> SecurityIdentity:
     """Dependency that enforces TECHNICIAN or SEC_ADMIN role.
 
     Raises:

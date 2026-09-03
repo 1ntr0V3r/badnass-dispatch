@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 # ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ from uuid import UUID, uuid4
 # ---------------------------------------------------------------------------
 
 
-class TransportMode(str, Enum):
+class TransportMode(StrEnum):
     """Multimodal transport classification per CMR/IATA/SOLAS standards."""
 
     ROAD_TIR = "ROAD_TIR"
@@ -25,7 +25,7 @@ class TransportMode(str, Enum):
     AIR_FREIGHT = "AIR_FREIGHT"
 
 
-class OrderStatus(str, Enum):
+class OrderStatus(StrEnum):
     """Lifecycle states of a customs dispatch order."""
 
     PENDING_CUSTOMS = "PENDING_CUSTOMS"
@@ -34,7 +34,7 @@ class OrderStatus(str, Enum):
     SECURITY_HOLD = "SECURITY_HOLD"
 
 
-class UserRole(str, Enum):
+class UserRole(StrEnum):
     """RBAC roles — enforced at application and API layers."""
 
     SEC_ADMIN = "SEC_ADMIN"        # Full system access + incident traces
