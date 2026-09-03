@@ -9,6 +9,7 @@ The app will be available at:
 """
 
 import os
+
 import uvicorn
 
 # ── Dev secrets (for local testing ONLY — never use in production) ──────────
@@ -29,9 +30,10 @@ if __name__ == "__main__":
     print("=" * 60)
     print("BADNASS Dispatch Platform — Local Dev Server")
     print("=" * 60)
-    print("  API Docs  : http://127.0.0.1:8001/api/docs")
-    print("  Health    : http://127.0.0.1:8001/health")
-    print("  ReDoc     : http://127.0.0.1:8001/api/redoc")
+    print("  Dashboard UI : http://127.0.0.1:8001/ui")
+    print("  API Docs     : http://127.0.0.1:8001/api/docs")
+    print("  Health       : http://127.0.0.1:8001/health")
+    print("  ReDoc        : http://127.0.0.1:8001/api/redoc")
     print("=" * 60)
     uvicorn.run(
         app,

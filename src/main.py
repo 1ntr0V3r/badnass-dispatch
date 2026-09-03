@@ -103,12 +103,25 @@ def create_app(database_url: str | None = None, redis_url: str | None = None) ->
     async def health() -> dict:
         return {"status": "healthy", "service": "badnass-dispatch"}
 
-    # ── Root redirect → Swagger UI ────────────────────────────────────────
-    from fastapi.responses import RedirectResponse  # noqa: PLC0415
+    # ── Static Files & Frontend Dashboard ──────────────────────────────────
+    from pathlib import Path  # noqa: PLC0415
+
+    from fastapi.responses import FileResponse, RedirectResponse  # noqa: PLC0415
+    from fastapi.staticfiles import StaticFiles  # noqa: PLC0415
+
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+    @app.get("/ui", include_in_schema=False)
+    @app.get("/dashboard", include_in_schema=False)
+    async def dashboard_view() -> FileResponse:
+        index_file = static_dir / "index.html"
+        return FileResponse(str(index_file))
 
     @app.get("/", include_in_schema=False)
     async def root() -> RedirectResponse:
-        return RedirectResponse(url="/api/docs")
+        return RedirectResponse(url="/ui")
 
     return app
 
