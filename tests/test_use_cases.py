@@ -13,12 +13,11 @@ from __future__ import annotations
 import hashlib
 import hmac as hmac_lib
 import os
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from src.application.use_cases import ProcessDispatchUseCase, SubmitDispatchCommand
 from src.domain.models import DispatchOrder, OrderStatus, SecurityIdentity, UserRole
@@ -41,7 +40,7 @@ def _make_hmac(payload: bytes, secret: str = _MOCK_SECRET) -> str:
 
 
 def _now_ts() -> float:
-    return datetime.now(timezone.utc).timestamp()
+    return datetime.now(UTC).timestamp()
 
 
 def _make_cmd(

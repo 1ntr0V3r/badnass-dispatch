@@ -15,7 +15,6 @@ from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-
 # ---------------------------------------------------------------------------
 # HMAC Integrity Service
 # ---------------------------------------------------------------------------

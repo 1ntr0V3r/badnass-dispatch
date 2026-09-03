@@ -16,22 +16,21 @@ import hashlib
 import hmac as hmac_lib
 import json
 import os
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import jwt
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.infrastructure.audit import AuditEventORM, SqlAlchemyAuditRegistry
-from src.infrastructure.persistence import Base, IdempotencyRecordORM, OrderORM, UserORM
-from src.main import create_app
 from src.api.dependencies import hash_password
+from src.infrastructure.audit import AuditEventORM, SqlAlchemyAuditRegistry
+from src.infrastructure.persistence import Base, UserORM
+from src.main import create_app
 
 _SECRET_KEY = os.environ.get("SECRET_KEY", "test_secret_key_for_pytest_only_64chars_aabbccddee")
 _JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
@@ -98,7 +97,7 @@ async def client(app_with_db: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 def make_jwt_token(role: str, user_id: str | None = None) -> str:
     from datetime import timedelta
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id or str(uuid4()),
         "role": role,
@@ -118,7 +117,7 @@ def make_dispatch_headers(
     hmac_sig: str | None = None,
     client_id: str = "client-test-001",
 ) -> dict:
-    now_ts = timestamp or datetime.now(timezone.utc).timestamp()
+    now_ts = timestamp or datetime.now(UTC).timestamp()
     sig = hmac_sig or hmac_lib.new(_MOCK_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     headers = {
         "Authorization": f"Bearer {token or make_jwt_token('OPERATOR')}",
@@ -174,7 +173,7 @@ class TestMissingJwt:
         body = json.dumps(valid_dispatch_payload()).encode()
         headers = {
             "X-Client-ID": "client-test-001",
-            "X-Timestamp": str(datetime.now(timezone.utc).timestamp()),
+            "X-Timestamp": str(datetime.now(UTC).timestamp()),
             "X-Idempotency-Key": str(uuid4()),
             "X-Signature-HMAC": "deadbeef",
             "Content-Type": "application/json",

@@ -11,9 +11,6 @@ Tests:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from uuid import uuid4
-
 import pytest
 
 from src.domain.models import (
@@ -23,7 +20,6 @@ from src.domain.models import (
     TransportMode,
     UserRole,
 )
-
 
 # ---------------------------------------------------------------------------
 # DispatchOrder — Nominal

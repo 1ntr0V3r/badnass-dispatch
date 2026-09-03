@@ -5,17 +5,17 @@ aes_key = secrets.token_hex(32)
 mock_secret = secrets.token_hex(16)
 
 env_lines = [
-    f"APP_ENV=production",
-    f"APP_PORT=8000",
+    "APP_ENV=production",
+    "APP_PORT=8000",
     f"SECRET_KEY={secret_key}",
-    f"JWT_ALGORITHM=HS256",
-    f"POSTGRES_USER=badnass_admin",
-    f"POSTGRES_PASSWORD=badnass_secure_pass_2026",
-    f"POSTGRES_DB=badnass_dispatch",
-    f"POSTGRES_HOST=postgres",
-    f"POSTGRES_PORT=5432",
-    f"REDIS_HOST=redis",
-    f"REDIS_PORT=6379",
+    "JWT_ALGORITHM=HS256",
+    "POSTGRES_USER=badnass_admin",
+    "POSTGRES_PASSWORD=badnass_secure_pass_2026",
+    "POSTGRES_DB=badnass_dispatch",
+    "POSTGRES_HOST=postgres",
+    "POSTGRES_PORT=5432",
+    "REDIS_HOST=redis",
+    "REDIS_PORT=6379",
     f"AES_256_KEY_HEX={aes_key}",
     f"MOCK_CLIENT_SECRET={mock_secret}",
 ]

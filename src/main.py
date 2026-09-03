@@ -18,14 +18,8 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from src.api.errors import register_exception_handlers
 from src.api.routes import router
-from src.infrastructure.audit import AuditEventORM
 from src.infrastructure.persistence import (
     Base,
-    OrderORM,
-    IdempotencyRecordORM,
-    UserORM,
-    ClientORM,
-    DriverORM,
     create_engine_and_session,
 )
 

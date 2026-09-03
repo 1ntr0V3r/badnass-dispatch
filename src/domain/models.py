@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
-
 
 # ---------------------------------------------------------------------------
 # Domain Enumerations
@@ -91,7 +90,7 @@ class DispatchOrder:
     transport_mode: TransportMode = field(default=TransportMode.ROAD_TIR)
     gross_weight_kg: float = field(default=0.0)
     status: OrderStatus = field(default=OrderStatus.PENDING_CUSTOMS)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
         self._validate()

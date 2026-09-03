@@ -11,10 +11,9 @@ Security controls implemented:
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from src.application.ports import IAuditRegistry, IDispatchRepository, IIntegrityVerifier
 from src.domain.models import (
@@ -102,7 +101,7 @@ class ProcessDispatchUseCase:
             )
 
         # ── Gate 2: Temporal Anti-Replay ─────────────────────────────────
-        server_ts = datetime.now(timezone.utc).timestamp()
+        server_ts = datetime.now(UTC).timestamp()
         drift = abs(server_ts - cmd.client_timestamp)
         if drift > _ANTI_REPLAY_WINDOW_SECONDS:
             raise TimeoutError(

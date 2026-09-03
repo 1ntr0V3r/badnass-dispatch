@@ -9,10 +9,11 @@ from __future__ import annotations
 import hashlib
 import hmac as hmac_lib
 import os
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import jwt
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -21,17 +22,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from src.domain.models import SecurityIdentity, UserRole
 from src.infrastructure.audit import AuditEventORM, SqlAlchemyAuditRegistry
+from src.infrastructure.crypto import HmacIntegrityService
 from src.infrastructure.persistence import (
     Base,
-    IdempotencyRecordORM,
-    OrderORM,
     SqlAlchemyDispatchRepository,
-    UserORM,
 )
-from src.infrastructure.crypto import HmacIntegrityService
 from src.main import create_app
-
-import jwt
 
 # ---------------------------------------------------------------------------
 # Environment setup for tests
@@ -138,7 +134,7 @@ def admin_identity() -> SecurityIdentity:
 def make_jwt(role: UserRole, user_id: str = "test-user") -> str:
     """Generate a valid JWT token for testing."""
     jti = str(uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     from datetime import timedelta
     payload = {
         "sub": user_id,

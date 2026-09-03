@@ -10,16 +10,14 @@ Endpoints:
 
 from __future__ import annotations
 
-import hashlib
-import hmac as hmac_lib
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID, uuid4
 
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -29,12 +27,11 @@ from src.api.dependencies import (
     get_client_secret,
     get_current_identity,
     get_db_session,
-    hash_password,
     require_privilege,
     verify_password,
 )
 from src.application.use_cases import ProcessDispatchUseCase, SubmitDispatchCommand
-from src.domain.models import SecurityIdentity, UserRole
+from src.domain.models import SecurityIdentity
 from src.infrastructure.audit import SqlAlchemyAuditRegistry
 from src.infrastructure.crypto import HmacIntegrityService
 from src.infrastructure.persistence import (
@@ -112,7 +109,7 @@ async def login(
         )
 
     jti = str(uuid4())
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(user.id),
         "role": user.role,

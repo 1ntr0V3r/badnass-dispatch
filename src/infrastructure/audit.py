@@ -17,14 +17,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text, select
+from sqlalchemy import Column, DateTime, Integer, String, Text, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.persistence import Base
-
 
 # ---------------------------------------------------------------------------
 # Audit ORM Models
@@ -44,7 +43,7 @@ class AuditEventORM(Base):
     timestamp = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
     actor_id = Column(String(256), nullable=False, index=True)
     event_type = Column(String(128), nullable=False, index=True)
@@ -111,7 +110,7 @@ class SqlAlchemyAuditRegistry:
         metadata: dict,
     ) -> None:
         """Record a domain event in the WORM hash-chained audit log."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         timestamp_iso = now.isoformat()
         metadata_json = json.dumps(metadata, default=str, sort_keys=True)
         prev_hash = await self._get_last_hash()
@@ -140,7 +139,7 @@ class SqlAlchemyAuditRegistry:
         metadata: dict | None = None,
     ) -> None:
         """Record a security incident with full stack trace (RBAC-gated retrieval)."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         timestamp_iso = now.isoformat()
         safe_actor = actor_id or "SYSTEM"
         meta_json = json.dumps(metadata or {}, default=str, sort_keys=True)

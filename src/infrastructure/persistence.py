@@ -10,8 +10,7 @@ Database schema (per architecture diagrams):
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -31,7 +30,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 from src.domain.models import DispatchOrder, OrderStatus, TransportMode
-
 
 # ---------------------------------------------------------------------------
 # SQLAlchemy Base and Engine
@@ -113,7 +111,7 @@ class DriverORM(Base):
     purge_at = Column(                              # CNDP 30-day retention
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc) + timedelta(days=30),
+        default=lambda: datetime.now(UTC) + timedelta(days=30),
     )
 
     orders = relationship("OrderORM", back_populates="driver", lazy="noload")
@@ -140,7 +138,7 @@ class OrderORM(Base):
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     client = relationship("ClientORM", back_populates="orders", lazy="noload")
@@ -164,7 +162,7 @@ class IdempotencyRecordORM(Base):
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
 
