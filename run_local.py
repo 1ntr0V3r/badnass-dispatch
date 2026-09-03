@@ -4,8 +4,9 @@ Usage:
     python run_local.py
 
 The app will be available at:
-    http://127.0.0.1:8000/health
-    http://127.0.0.1:8000/api/docs
+    http://127.0.0.1:8001/ui
+    http://127.0.0.1:8001/health
+    http://127.0.0.1:8001/api/docs
 """
 
 import os
