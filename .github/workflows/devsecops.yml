@@ -1,0 +1,256 @@
+name: BADNASS DevSecOps Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/badnass-dispatch
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # ══════════════════════════════════════════════════════════════
+  # GATE 1: Secret Scanning with Gitleaks
+  # ══════════════════════════════════════════════════════════════
+  secret-scan:
+    name: "Gate 1 — Secret Scan (Gitleaks)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive scan
+
+      - name: Run Gitleaks secret scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ══════════════════════════════════════════════════════════════
+  # GATE 2: SAST & Linting (Ruff + Semgrep OWASP Top 10)
+  # ══════════════════════════════════════════════════════════════
+  sast-lint:
+    name: "Gate 2 — SAST & Lint (Ruff + Semgrep)"
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Ruff
+        run: pip install ruff>=0.3.0
+
+      - name: Run Ruff linter (FAIL on any error)
+        run: ruff check . --output-format=github
+
+      - name: Run Ruff formatter check
+        run: ruff format --check .
+
+      - name: Run Semgrep OWASP Top 10
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/python
+            p/secrets
+            p/jwt
+            p/sql-injection
+            p/xss
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  # ══════════════════════════════════════════════════════════════
+  # GATE 3: Unit & Integration Tests (Pytest ≥ 85% coverage)
+  # ══════════════════════════════════════════════════════════════
+  test:
+    name: "Gate 3 — Tests & Coverage (Pytest ≥85%)"
+    runs-on: ubuntu-latest
+    needs: sast-lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Pytest with coverage enforcement
+        env:
+          SECRET_KEY: "test_secret_key_for_ci_pipeline_only_aabbccddee1122"
+          JWT_ALGORITHM: "HS256"
+          AES_256_KEY_HEX: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          MOCK_CLIENT_SECRET: "test_mock_client_secret_hmac_key_ci"
+        run: |
+          pytest tests/ \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=85 \
+            --asyncio-mode=auto \
+            -v
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ══════════════════════════════════════════════════════════════
+  # GATE 4: Dependency SCA with Trivy fs (CRITICAL/HIGH fail)
+  # ══════════════════════════════════════════════════════════════
+  dependency-scan:
+    name: "Gate 4 — SCA Dependencies (Trivy fs)"
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan (fail on CRITICAL/HIGH CVEs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: false
+
+      - name: Upload Trivy fs SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs-results.sarif
+
+  # ══════════════════════════════════════════════════════════════
+  # GATE 5: Container Build + Image Scan (Trivy image)
+  # ══════════════════════════════════════════════════════════════
+  container-scan:
+    name: "Gate 5 — Build & Scan Container (Trivy image)"
+    runs-on: ubuntu-latest
+    needs: dependency-scan
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build container image (multi-stage)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Run Trivy image scan (fail on CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: sarif
+          output: trivy-image-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: false
+
+      - name: Upload Trivy image SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image-results.sarif
+
+      - name: Log in to GitHub Container Registry
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image to GHCR (main branch only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  # ══════════════════════════════════════════════════════════════
+  # GATE 6: SBOM Generation & Image Signing (Syft + Cosign)
+  # ══════════════════════════════════════════════════════════════
+  sbom-sign:
+    name: "Gate 6 — SBOM & Signature (Syft SPDX + Cosign)"
+    runs-on: ubuntu-latest
+    needs: container-scan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write  # Required for keyless Cosign signing (OIDC)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Generate SBOM in SPDX format
+        run: |
+          syft ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} \
+            --output spdx-json=badnass-sbom-${{ env.IMAGE_TAG }}.spdx.json \
+            --output cyclonedx-json=badnass-sbom-${{ env.IMAGE_TAG }}.cdx.json
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container image with Cosign (keyless OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign --yes \
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Attach SBOM to image with Cosign
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign attach sbom \
+            --sbom badnass-sbom-${{ env.IMAGE_TAG }}.spdx.json \
+            --type spdx \
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Upload SBOM as certified artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: badnass-sbom-${{ env.IMAGE_TAG }}
+          path: |
+            badnass-sbom-${{ env.IMAGE_TAG }}.spdx.json
+            badnass-sbom-${{ env.IMAGE_TAG }}.cdx.json
+          retention-days: 365
+          if-no-files-found: error

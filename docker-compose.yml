@@ -1,0 +1,222 @@
+# BADNASS Dispatch Platform — Docker Compose
+# Zero-trust network topology: 4 segregated bridge networks
+# All services have memory and CPU limits enforced
+# Data network is air-gapped (internal: true, no host ports)
+
+name: badnass-dispatch
+
+x-common-env: &common-env
+  APP_ENV: ${APP_ENV:-production}
+  SECRET_KEY: ${SECRET_KEY}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  AES_256_KEY_HEX: ${AES_256_KEY_HEX}
+  MOCK_CLIENT_SECRET: ${MOCK_CLIENT_SECRET}
+  POSTGRES_USER: ${POSTGRES_USER:-badnass_admin}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-badnass_secure_pass_2026}
+  POSTGRES_DB: ${POSTGRES_DB:-badnass_dispatch}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+
+# ============================================================
+# Networks — Zero-Trust Segmentation
+# ============================================================
+networks:
+  # DMZ: nginx ↔ api only (internet-facing)
+  dmz_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+  # App: api ↔ backend services (internal processing)
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24
+
+  # Data: api ↔ postgres ↔ redis (air-gapped, no host ports)
+  data_net:
+    driver: bridge
+    internal: true   # AIR-GAPPED: no external routing
+    ipam:
+      config:
+        - subnet: 172.28.2.0/24
+
+  # Ops: monitoring stack (loki, promtail)
+  ops_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.3.0/24
+
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  loki_data:
+    driver: local
+  nginx_ssl:
+    driver: local
+
+
+# ============================================================
+# Services
+# ============================================================
+services:
+
+  # ── NGINX: TLS termination, reverse proxy, rate limiting ────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: badnass-nginx
+    restart: unless-stopped
+    networks:
+      - dmz_net
+    ports:
+      - "8443:8443"   # HTTPS only — TLS 1.3
+      - "80:80"       # HTTP → HTTPS redirect only
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_ssl:/etc/nginx/ssl:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.5"
+
+  # ── FastAPI Application ───────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: badnass-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *common-env
+    networks:
+      - dmz_net   # Receives traffic from nginx
+      - app_net   # Communicates with backend services
+      - data_net  # Accesses postgres and redis
+    # No host port exposure — nginx is the only ingress
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+
+  # ── PostgreSQL 16: Primary data store ─────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: badnass-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-badnass_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-badnass_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-badnass_dispatch}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    networks:
+      - data_net  # AIR-GAPPED: only accessible from data_net
+    # NO host port exposure — air-gapped by design
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-badnass_admin} -d ${POSTGRES_DB:-badnass_dispatch}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+
+  # ── Redis 7: JTI revocation cache + idempotency ────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: badnass-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis_secure_2026}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
+    networks:
+      - data_net  # AIR-GAPPED: only accessible from data_net
+    # NO host port exposure — air-gapped by design
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secure_2026}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: "0.5"
+
+  # ── Loki: Log aggregation (audit trail storage) ────────────────────────────
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: badnass-loki
+    restart: unless-stopped
+    networks:
+      - ops_net
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+
+  # ── Promtail: Log shipper (api → loki) ────────────────────────────────────
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: badnass-promtail
+    restart: unless-stopped
+    networks:
+      - ops_net
+      - app_net
+    volumes:
+      - /var/log:/var/log:ro
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.25"
