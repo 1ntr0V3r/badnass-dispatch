@@ -1,0 +1,107 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\rbami\.gemini\antigravity-ide\scratch\badnass-dispatch\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\rbami\.gemini\antigravity-ide\scratch\badnass-dispatch
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.15.0, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 67 items
+
+tests/test_api_integration.py::TestDispatchNominal::test_submit_dispatch_returns_201 PASSED [  1%]
+tests/test_api_integration.py::TestMissingJwt::test_missing_jwt_returns_unauthenticated PASSED [  2%]
+tests/test_api_integration.py::TestMissingJwt::test_invalid_jwt_returns_401 PASSED [  4%]
+tests/test_api_integration.py::TestDuplicateIdempotencyKey::test_duplicate_key_returns_409 PASSED [  5%]
+tests/test_api_integration.py::TestTamperedSignature::test_tampered_hmac_returns_400 PASSED [  7%]
+tests/test_api_integration.py::TestOverweightOrder::test_overweight_returns_4xx PASSED [  8%]
+tests/test_api_integration.py::TestInternalCrashHandler::test_forced_crash_returns_opaque_rfc7807 PASSED [ 10%]
+tests/test_api_integration.py::TestRbacIncidentEndpoint::test_operator_is_denied_incident_access PASSED [ 11%]
+tests/test_api_integration.py::TestRbacIncidentEndpoint::test_b2b_client_is_denied_incident_access PASSED [ 13%]
+tests/test_api_integration.py::TestRbacIncidentEndpoint::test_technician_can_access_incident_endpoint PASSED [ 14%]
+tests/test_api_integration.py::TestRbacIncidentEndpoint::test_sec_admin_can_access_incident_endpoint PASSED [ 16%]
+tests/test_api_integration.py::TestRbacIncidentEndpoint::test_technician_retrieves_real_incident PASSED [ 17%]
+tests/test_coverage_booster.py::TestDriverDataEncryptor::test_encrypt_decrypt_roundtrip PASSED [ 19%]
+tests/test_coverage_booster.py::TestDriverDataEncryptor::test_encrypt_field_decrypt_field_roundtrip PASSED [ 20%]
+tests/test_coverage_booster.py::TestDriverDataEncryptor::test_encrypt_produces_different_ciphertexts PASSED [ 22%]
+tests/test_coverage_booster.py::TestDriverDataEncryptor::test_invalid_key_length_raises_value_error PASSED [ 23%]
+tests/test_coverage_booster.py::TestHmacErrorPath::test_verify_hmac_with_non_hex_signature_returns_false PASSED [ 25%]
+tests/test_coverage_booster.py::TestLoginEndpoint::test_valid_login_returns_token PASSED [ 26%]
+tests/test_coverage_booster.py::TestLoginEndpoint::test_invalid_credentials_returns_401 PASSED [ 28%]
+tests/test_coverage_booster.py::TestLoginEndpoint::test_unknown_user_returns_401 PASSED [ 29%]
+tests/test_coverage_booster.py::TestGetDispatchEndpoint::test_get_existing_order_returns_200 PASSED [ 31%]
+tests/test_coverage_booster.py::TestGetDispatchEndpoint::test_get_nonexistent_order_returns_404 PASSED [ 32%]
+tests/test_coverage_booster.py::TestBadTimestamp::test_non_numeric_timestamp_returns_400 PASSED [ 34%]
+tests/test_coverage_booster.py::TestTelemetryEndpoint::test_telemetry_ingest_returns_202 PASSED [ 35%]
+tests/test_coverage_booster.py::TestTelemetryEndpoint::test_telemetry_without_jwt_returns_403 PASSED [ 37%]
+tests/test_coverage_booster.py::TestErrorHandlersCoverage::test_permission_error_handler_returns_403 PASSED [ 38%]
+tests/test_coverage_booster.py::TestErrorHandlersCoverage::test_timeout_error_handler_returns_400 PASSED [ 40%]
+tests/test_coverage_booster.py::TestJwtEdgeCases::test_expired_jwt_returns_401 PASSED [ 41%]
+tests/test_domain.py::TestDispatchOrderNominal::test_creates_road_tir_order PASSED [ 43%]
+tests/test_domain.py::TestDispatchOrderNominal::test_creates_maritime_order PASSED [ 44%]
+tests/test_domain.py::TestDispatchOrderNominal::test_creates_air_freight_order PASSED [ 46%]
+tests/test_domain.py::TestDispatchOrderNominal::test_tracking_ref_minimum_length PASSED [ 47%]
+tests/test_domain.py::TestDispatchOrderNominal::test_tracking_ref_maximum_length PASSED [ 49%]
+tests/test_domain.py::TestDispatchOrderNominal::test_tracking_ref_with_hyphens_and_underscores PASSED [ 50%]
+tests/test_domain.py::TestDispatchOrderNominal::test_order_has_utc_created_at PASSED [ 52%]
+tests/test_domain.py::TestDispatchOrderNominal::test_minimum_valid_weight PASSED [ 53%]
+tests/test_domain.py::TestDispatchOrderWeightInvariants::test_rejects_overweight_order PASSED [ 55%]
+tests/test_domain.py::TestDispatchOrderWeightInvariants::test_rejects_exactly_zero_weight PASSED [ 56%]
+tests/test_domain.py::TestDispatchOrderWeightInvariants::test_rejects_negative_weight PASSED [ 58%]
+tests/test_domain.py::TestDispatchOrderWeightInvariants::test_rejects_massively_overweight PASSED [ 59%]
+tests/test_domain.py::TestDispatchOrderHubInvariants::test_rejects_identical_hubs PASSED [ 61%]
+tests/test_domain.py::TestDispatchOrderHubInvariants::test_rejects_identical_hubs_case_sensitive PASSED [ 62%]
+tests/test_domain.py::TestDispatchOrderTrackingRefInvariants::test_rejects_too_short_ref PASSED [ 64%]
+tests/test_domain.py::TestDispatchOrderTrackingRefInvariants::test_rejects_too_long_ref PASSED [ 65%]
+tests/test_domain.py::TestDispatchOrderTrackingRefInvariants::test_rejects_lowercase_ref PASSED [ 67%]
+tests/test_domain.py::TestDispatchOrderTrackingRefInvariants::test_rejects_special_chars_in_ref PASSED [ 68%]
+tests/test_domain.py::TestDispatchOrderTrackingRefInvariants::test_rejects_empty_ref PASSED [ 70%]
+tests/test_domain.py::TestSecurityIdentity::test_creates_valid_identity PASSED [ 71%]
+tests/test_domain.py::TestSecurityIdentity::test_privileged_roles PASSED [ 73%]
+tests/test_domain.py::TestSecurityIdentity::test_rejects_empty_user_id PASSED [ 74%]
+tests/test_domain.py::TestSecurityIdentity::test_rejects_empty_jti PASSED [ 76%]
+tests/test_domain.py::TestSecurityIdentity::test_is_frozen PASSED        [ 77%]
+tests/test_domain.py::TestEnums::test_transport_modes PASSED             [ 79%]
+tests/test_domain.py::TestEnums::test_order_statuses PASSED              [ 80%]
+tests/test_domain.py::TestEnums::test_user_roles PASSED                  [ 82%]
+tests/test_use_cases.py::TestNominalDispatchLifecycle::test_operator_submits_dispatch_successfully PASSED [ 83%]
+tests/test_use_cases.py::TestNominalDispatchLifecycle::test_b2b_client_submits_dispatch_successfully PASSED [ 85%]
+tests/test_use_cases.py::TestNominalDispatchLifecycle::test_audit_records_actor_id PASSED [ 86%]
+tests/test_use_cases.py::TestHmacTamperingRejection::test_rejects_tampered_payload PASSED [ 88%]
+tests/test_use_cases.py::TestHmacTamperingRejection::test_rejects_wrong_secret PASSED [ 89%]
+tests/test_use_cases.py::TestIdempotencyRejection::test_rejects_duplicate_idempotency_key PASSED [ 91%]
+tests/test_use_cases.py::TestIdempotencyRejection::test_does_not_save_on_duplicate PASSED [ 92%]
+tests/test_use_cases.py::TestTemporalAntiReplay::test_rejects_stale_timestamp PASSED [ 94%]
+tests/test_use_cases.py::TestTemporalAntiReplay::test_rejects_future_timestamp PASSED [ 95%]
+tests/test_use_cases.py::TestTemporalAntiReplay::test_accepts_within_drift_window PASSED [ 97%]
+tests/test_use_cases.py::TestRbacRejection::test_rejects_unknown_role_if_any PASSED [ 98%]
+tests/test_use_cases.py::TestDomainInvariantRejection::test_rejects_overweight_order PASSED [100%]
+
+============================== warnings summary ===============================
+tests/test_api_integration.py::TestDispatchNominal::test_submit_dispatch_returns_201
+  C:\Users\rbami\.gemini\antigravity-ide\scratch\badnass-dispatch\.venv\Lib\site-packages\passlib\handlers\argon2.py:716: DeprecationWarning: Accessing argon2.__version__ is deprecated and will be removed in a future release. Use importlib.metadata directly to query for argon2-cffi's packaging metadata.
+    _argon2_cffi.__version__, max_version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.0-final-0 _______________
+
+Name                                Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------
+src\__init__.py                         0      0   100%
+src\api\__init__.py                     0      0   100%
+src\api\dependencies.py                59      6    90%   92, 96-97, 102-104
+src\api\errors.py                      40      4    90%   122-131
+src\api\routes.py                      97     18    81%   102-125, 201, 222-225, 267, 296-299
+src\application\__init__.py             0      0   100%
+src\application\ports.py               22      6    73%   21, 25, 29, 57, 77, 88
+src\application\use_cases.py           48      3    94%   99, 131-132
+src\domain\__init__.py                  0      0   100%
+src\domain\models.py                   64      5    92%   69, 73, 122, 125, 129
+src\infrastructure\__init__.py          0      0   100%
+src\infrastructure\audit.py            57      5    91%   117-131, 173
+src\infrastructure\crypto.py           41      2    95%   50-51
+src\infrastructure\persistence.py      77      8    90%   54-66, 186, 214-219
+-----------------------------------------------------------------
+TOTAL                                 505     57    89%
+======================== 67 passed, 1 warning in 3.83s ========================
+
